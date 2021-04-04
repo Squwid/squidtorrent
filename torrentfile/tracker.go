@@ -2,7 +2,12 @@ package torrentfile
 
 import (
 	"fmt"
+	"net/http"
 	"net/url"
+	"time"
+
+	"github.com/Squwid/squidtorrent/peers"
+	"github.com/jackpal/bencode-go"
 )
 
 type bencodeTrackerResp struct {
@@ -22,7 +27,7 @@ func (tf *TorrentFile) buildTrackerURL(peerID [20]byte, port uint16) (string, er
 	params := url.Values{
 		"info_hash":  []string{string(tf.InfoHash[:])}, // Identifies the file that is gonna get downloaded
 		"peer_id":    []string{string(peerID[:])},      // Real BitTorrent clients have pre-generated ids, come up with our own
-		"port":       []string{fmt.Sprintf("%v", port)},
+		"port":       []string{fmt.Sprintf("%v", Port)},
 		"uploaded":   []string{"0"},
 		"downloaded": []string{"0"},
 		"compact":    []string{"1"},
@@ -34,4 +39,22 @@ func (tf *TorrentFile) buildTrackerURL(peerID [20]byte, port uint16) (string, er
 	return base.String(), nil
 }
 
-// func r(tf *TorrentFile) requestPeers(peerID [20]byte, port uint16)
+func (tf *TorrentFile) requestPeers(peerID [20]byte, port uint16) ([]peers.Peer, error) {
+	url, err := tf.buildTrackerURL(peerID, port)
+	if err != nil {
+		return nil, err
+	}
+
+	c := &http.Client{Timeout: 15 * time.Second}
+	resp, err := c.Get(url)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	var trackerResp bencodeTrackerResp
+	if err := bencode.Unmarshal(resp.Body, &trackerResp); err != nil {
+		return nil, err
+	}
+	return peers.Unmarshal([]byte(trackerResp.Peers))
+}

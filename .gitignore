@@ -2,3 +2,5 @@
 vendor/
 go.sum
 _test.go
+data_test/
+torrent_files/

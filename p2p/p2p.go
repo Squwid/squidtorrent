@@ -213,8 +213,8 @@ func (t *Torrent) pieceSize(index int) int {
 
 // Download downloads the torrent. This stores the entire file in memory.
 func (t *Torrent) Download() ([]byte, error) {
-	logger := new(logrus.Entry)
-	logger.WithField("Name", t.Name).Infof("Starting download")
+	logger := logrus.WithField("Name", t.Name)
+	logger.Infof("Starting download")
 
 	// Initialize channels
 	workChan := make(chan *pieceWork, len(t.PieceHashes))
