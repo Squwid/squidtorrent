@@ -13,31 +13,31 @@ type messageID uint8
 
 const (
 	// MsgChoke chokes the receiver
-	MsgChoke messageID = 0
+	MsgChoke messageID = iota
 
 	// MsgUnchoke unchokes the receiver
-	MsgUnchoke messageID = 1
+	MsgUnchoke
 
 	// MsgInterested expresses interest in receiving data
-	MsgInterested messageID = 2
+	MsgInterested
 
 	// MsgNotInterested expresses disinterest in receiving data
-	MsgNotInterested messageID = 3
+	MsgNotInterested
 
 	// MsgHave alerts the receiver that the sender has downloaded a piece
-	MsgHave messageID = 4
+	MsgHave
 
 	// MsgBitfield encodes which pieces that the sender has downloaded
-	MsgBitfield messageID = 5
+	MsgBitfield
 
 	// MsgRequest requests a block of data from the receiver
-	MsgRequest messageID = 6
+	MsgRequest
 
 	// MsgPiece delivers a block of data to fulfill a request
-	MsgPiece messageID = 7
+	MsgPiece
 
 	// MsgCancel cancels a request
-	MsgCancel messageID = 8
+	MsgCancel
 )
 
 // Message stores the ID and payload of a message

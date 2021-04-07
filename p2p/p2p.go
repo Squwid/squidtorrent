@@ -9,6 +9,7 @@ import (
 	"github.com/Squwid/squidtorrent/client"
 	"github.com/Squwid/squidtorrent/message"
 	"github.com/Squwid/squidtorrent/peers"
+	"github.com/Squwid/squidtorrent/util"
 	"github.com/sirupsen/logrus"
 )
 
@@ -113,49 +114,6 @@ func (t *Torrent) startDownloader(peer peers.Peer, workChan chan *pieceWork, res
 	}
 }
 
-func checkIntegrity(pw *pieceWork, buf []byte) error {
-	hash := sha1.Sum(buf)
-	if !bytes.Equal(hash[:], pw.hash[:]) {
-		return fmt.Errorf("index %v failed integrity check", pw.index)
-	}
-	return nil
-}
-
-func (state *pieceProgress) readMsg() error {
-	// This call blocks until peer sends a message. If timeout is hit, peer is dropped and requeue'd
-	msg, err := state.client.Read()
-	if err != nil {
-		return err
-	}
-
-	// Keep alive
-	if msg == nil {
-		return nil
-	}
-
-	switch msg.ID {
-	case message.MsgUnchoke:
-		state.client.Choked = false
-	case message.MsgChoke:
-		state.client.Choked = true
-	case message.MsgHave:
-		index, err := msg.ParseHave()
-		if err != nil {
-			return err
-		}
-		state.client.Bitfield.SetPiece(index)
-
-	case message.MsgPiece:
-		n, err := msg.ParsePiece(state.index, state.buf)
-		if err != nil {
-			return err
-		}
-		state.downloaded += n
-		state.backlog--
-	}
-	return nil
-}
-
 // downloadPiece gets all blocks and combines them to a piece
 func downloadPiece(c *client.Client, pw *pieceWork) ([]byte, error) {
 	state := pieceProgress{
@@ -166,7 +124,7 @@ func downloadPiece(c *client.Client, pw *pieceWork) ([]byte, error) {
 
 	// 30 second timeout, incase peer has slow as shit internet.
 	// Disable the deadline after successful download
-	c.Conn.SetDeadline(time.Now().Add(30 * time.Second))
+	c.Conn.SetDeadline(time.Now().Add(1 * time.Minute))
 	defer c.Conn.SetDeadline(time.Time{})
 
 	for state.downloaded < pw.length {
@@ -188,11 +146,56 @@ func downloadPiece(c *client.Client, pw *pieceWork) ([]byte, error) {
 			}
 		}
 
+		// If choked, will sit here and wait
 		if err := state.readMsg(); err != nil {
 			return nil, err
 		}
 	}
 	return state.buf, nil
+}
+
+func (state *pieceProgress) readMsg() error {
+	// This call blocks until peer sends a message. If timeout is hit, peer is dropped and requeue'd
+	msg, err := state.client.Read()
+	if err != nil {
+		return err
+	}
+
+	// Keep alive
+	if msg == nil {
+		return nil
+	}
+
+	switch msg.ID {
+	case message.MsgUnchoke:
+		state.client.Choked = false
+	case message.MsgChoke:
+		state.client.Choked = true
+	case message.MsgHave:
+		// Peer can get piece of the file mid download and let us know
+		index, err := msg.ParseHave()
+		if err != nil {
+			return err
+		}
+		state.client.Bitfield.SetPiece(index)
+
+	case message.MsgPiece:
+		n, err := msg.ParsePiece(state.index, state.buf)
+		if err != nil {
+			return err
+		}
+		state.downloaded += n
+		state.backlog--
+	}
+	return nil
+}
+
+func checkIntegrity(pw *pieceWork, buf []byte) error {
+	hash := sha1.Sum(buf)
+	if !bytes.Equal(hash[:], pw.hash[:]) {
+		return fmt.Errorf("index %v failed integrity check", pw.index)
+	}
+	return nil
 }
 
 // pieceBounds gets the piece length. all pieces will be the same except the end piece
@@ -214,7 +217,11 @@ func (t *Torrent) pieceSize(index int) int {
 // Download downloads the torrent. This stores the entire file in memory.
 func (t *Torrent) Download() ([]byte, error) {
 	logger := logrus.WithField("Name", t.Name)
-	logger.Infof("Starting download")
+	logger.WithFields(logrus.Fields{
+		"Peers":    len(t.Peers),
+		"Size":     util.FormatBytes(t.Length),
+		"InfoHash": string(t.InfoHash[:]),
+	}).Infof("Starting torrent download")
 
 	// Initialize channels
 	workChan := make(chan *pieceWork, len(t.PieceHashes))

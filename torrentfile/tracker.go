@@ -19,19 +19,20 @@ type bencodeTrackerResp struct {
 
 // Build GET request url to hit tracker to announce presense as a peer and receeive list of other peers
 func (tf *TorrentFile) buildTrackerURL(peerID [20]byte, port uint16) (string, error) {
-	base, err := url.Parse(tf.Announce)
+	base, err := url.Parse(tf.Info.Files[0].Path)
 	if err != nil {
 		return "", err
 	}
 
+	// https://www.bittorrent.org/beps/bep_0003.html
 	params := url.Values{
-		"info_hash":  []string{string(tf.InfoHash[:])}, // Identifies the file that is gonna get downloaded
-		"peer_id":    []string{string(peerID[:])},      // Real BitTorrent clients have pre-generated ids, come up with our own
+		"info_hash":  []string{string(tf.Info.InfoHash[:])}, // Identifies the file that is gonna get downloaded
+		"peer_id":    []string{string(peerID[:])},           // Real BitTorrent clients have pre-generated ids, come up with our own
 		"port":       []string{fmt.Sprintf("%v", Port)},
 		"uploaded":   []string{"0"},
 		"downloaded": []string{"0"},
 		"compact":    []string{"1"},
-		"left":       []string{fmt.Sprintf("%v", tf.Length)},
+		"left":       []string{fmt.Sprintf("%v", tf.Info.Length)},
 	}
 
 	// Craft up the url with the values
