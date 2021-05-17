@@ -32,13 +32,13 @@ type TorrentFile struct {
 
 // TorrentInfo contains info about the torrent file
 type TorrentInfo struct {
-	Name      string
-	InfoHash  [20]byte
-	Length    int64
-	NumPieces uint32
-	Private   bool
-	Files     []File
-	Info      BencodeInfo
+	Name        string
+	InfoHash    [20]byte
+	Length      int64
+	NumPieces   uint32
+	Private     bool
+	Files       []File
+	BencodeInfo BencodeInfo
 }
 
 type BencodeInfo struct {
@@ -178,7 +178,7 @@ func (bci BencodeInfo) hash() ([20]byte, error) {
 }
 
 func (ti TorrentInfo) PieceHash(index uint32) []byte {
-	return ti.Info.PieceHash(index)
+	return ti.BencodeInfo.PieceHash(index)
 }
 
 func (bci BencodeInfo) PieceHash(index uint32) []byte {
@@ -209,9 +209,9 @@ func (bci BencodeInfo) toTorrent() (*TorrentInfo, error) {
 	}
 
 	ti := TorrentInfo{
-		NumPieces: uint32(numPieces),
-		Name:      bci.Name,
-		Info:      bci,
+		NumPieces:   uint32(numPieces),
+		Name:        bci.Name,
+		BencodeInfo: bci,
 	}
 
 	isMultiFile := len(bci.Files) > 0
@@ -226,7 +226,7 @@ func (bci BencodeInfo) toTorrent() (*TorrentInfo, error) {
 	sumPiecesLength := int64(bci.PieceLength) * int64(ti.NumPieces)
 
 	// Check that total length is not greater than piece length, since the last piece can be shorter than the rest
-	if dif := sumPiecesLength - ti.Length; dif >= int64(ti.Info.PieceLength) || dif < 0 {
+	if dif := sumPiecesLength - ti.Length; dif >= int64(ti.BencodeInfo.PieceLength) || dif < 0 {
 		return nil, errInvalidPieceData
 	}
 

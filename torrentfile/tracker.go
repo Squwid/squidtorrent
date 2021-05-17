@@ -18,7 +18,7 @@ type bencodeTrackerResp struct {
 }
 
 // Build GET request url to hit tracker to announce presense as a peer and receeive list of other peers
-func (tf *TorrentFile) buildTrackerURL(peerID [20]byte, port uint16) (string, error) {
+func (tf TorrentFile) buildTrackerURL(peerID [20]byte) (string, error) {
 	base, err := url.Parse(tf.Info.Files[0].Path)
 	if err != nil {
 		return "", err
@@ -40,7 +40,7 @@ func (tf *TorrentFile) buildTrackerURL(peerID [20]byte, port uint16) (string, er
 	return base.String(), nil
 }
 
-func (tf *TorrentFile) requestPeers(peerID [20]byte, port uint16) ([]peers.Peer, error) {
+func (tf TorrentFile) Announce(peerID [20]byte, port uint16) ([]peers.Peer, error) {
 	url, err := tf.buildTrackerURL(peerID, port)
 	if err != nil {
 		return nil, err

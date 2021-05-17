@@ -24,13 +24,13 @@ func TestTorrent(t *testing.T) {
 	}, tor.AnnounceList)
 }
 
-func TestToTorrent(t *testing.T) {
-	tests := map[string]struct {
-		input  BencodeInfo
-		output *TorrentInfo
-		fails  bool
-	}{}
-}
+// func TestToTorrent(t *testing.T) {
+// 	tests := map[string]struct {
+// 		input  BencodeInfo
+// 		output *TorrentInfo
+// 		fails  bool
+// 	}{}
+// }
 
 // func TestToTorrentFile(t *testing.T) {
 // 	tests := map[string]struct {
